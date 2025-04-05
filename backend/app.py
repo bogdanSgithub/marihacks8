@@ -13,15 +13,20 @@ from difflib import SequenceMatcher
 dotenv_path = join(dirname(__file__), ".env")
 load_dotenv(dotenv_path)
 
-VONAGE_API_KEY = os.getenv('VONAGE_API_KEY')
-VONAGE_API_SECRET = os.getenv('VONAGE_API_SECRET')
-SMS_TO_NUMBER = os.getenv("SMS_TO_NUMBER")
-SMS_SENDER_ID = os.getenv("SMS_SENDER_ID")
+VONAGE_API_KEY = os.environ.get('VONAGE_API_KEY')
+VONAGE_API_SECRET = os.environ.get('VONAGE_API_SECRET')
+SMS_TO_NUMBER = os.environ.get("SMS_TO_NUMBER")
+SMS_SENDER_ID = os.environ.get("SMS_SENDER_ID")
+
+class Call(BaseModel):
+    call_id: str
+    phone_number: str
 
 class Message(BaseModel):
     role: str
     transcript: str
     call_id: str
+    phone_number: str
 
 class MessagePublic(BaseModel):
     role: str
@@ -46,7 +51,7 @@ app.add_middleware(
 
 # In-memory DB
 memory_db: Dict[str, List[Message]] = {"messages": []}
-call_ids = set()
+calls: Dict[str, Call] = {}
 
 # Static frontend folder
 build_folder = os.path.abspath("../frontend/build")
@@ -107,7 +112,7 @@ def add_message(message: Message):
         else:
             # Diverging message (different content) → flush buffer
             memory_db["messages"].append(current_msg)
-            call_ids.add(current_msg.call_id)
+            calls[message.call_id].messages.append(current_msg)  # Add to the correct call
             current_buffer = {
                 "call_id": message.call_id,
                 "role": message.role,
@@ -118,7 +123,7 @@ def add_message(message: Message):
     # SPEAKER CHANGED → flush buffer if exists
     if current_msg is not None:
         memory_db["messages"].append(current_msg)
-        call_ids.add(current_msg.call_id)
+        calls[message.call_id].messages.append(current_msg)  # Add to the correct call
 
     # Start new buffer
     current_buffer = {
@@ -127,12 +132,18 @@ def add_message(message: Message):
         "message": message
     }
 
+    # Store the call in the calls dictionary if it's a new call_id
+    if message.call_id not in calls:
+        calls[message.call_id] = Call(call_id=message.call_id, phone_number=message.phone_number)
+
     return {"message": "New speaker. Message buffered."}
 
 
-@app.get("/api/call_ids")
+@app.get("/api/calls")
 def get_call_ids():
-    return {"call_ids": list(call_ids)}
+    return {
+        "calls": [{"call_id": call.call_id, "phone_number": call.phone_number} for call in calls.values()]
+    }
 
 @app.post("/api/send_notification")
 def send_notification(request: NotificationRequest):
