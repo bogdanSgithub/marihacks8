@@ -1,29 +1,34 @@
-import { MailIcon, PlusCircleIcon } from "lucide-react";
-
-import { Button } from "@/components/ui/button"
+import * as React from "react"
+import { Link, useLocation } from "react-router-dom"
 import {
-  SidebarGroup,
-  SidebarGroupContent,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuButton,
 } from "@/components/ui/sidebar"
 
-export function NavMain({
-  items
-}) {
+export function NavMain({ items }) {
+  const location = useLocation();
+  
   return (
-    <SidebarGroup>
-        <SidebarMenu>
-          {items.map((item) => (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton tooltip={item.title}>
-                {item.icon && <item.icon />}
+    <SidebarMenu>
+      {items.map((item) => {
+        const Icon = item.icon;
+        const isActive = location.pathname === item.url;
+        
+        return (
+          <SidebarMenuItem key={item.url}>
+            <SidebarMenuButton 
+              asChild 
+              active={isActive}
+            >
+              <Link to={item.url}>
+                {Icon && <Icon className="h-5 w-5" />}
                 <span>{item.title}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
-    </SidebarGroup>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        );
+      })}
+    </SidebarMenu>
   );
 }

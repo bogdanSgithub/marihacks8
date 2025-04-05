@@ -2,7 +2,7 @@
 // Enhanced utility that extracts complete emergency information
 
 // API key and URL are directly embedded for simplicity
-const apiKey = "AIzaSyAh2qi-zgjWVVNgYL8h6sJzaA6xX2Vlb8A";
+const apiKey = "AIzaSyCJZuABNcJSsgqqCzQSWSCbcSkCZTMd2ow";
 const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
 // Helper function to fetch chat responses

@@ -25,12 +25,14 @@ export function EmergencySystem() {
   const [mapType, setMapType] = useState("roadmap");
   const [messages, setMessages] = useState([]);
   const [notificationSent, setNotificationSent] = useState(false);
+  const [shouldSendNotification, setShouldSendNotification] = useState(false);
   
   // Function to handle call selection
   const handleCallSelect = (callId) => {
     setSelectedCallId(callId);
     setEmergencyInfo(null); // Reset emergency info when a new call is selected
     setNotificationSent(false); // Reset notification status when a new call is selected
+    setShouldSendNotification(false); // Reset notification flag when a new call is selected
   };
   
   // Function to toggle map type
@@ -40,9 +42,13 @@ export function EmergencySystem() {
 
   // Function to send notification to emergency services
   const sendEmergencyNotification = async (address, summary) => {
+    // If notification was already sent, don't send again
+    if (notificationSent) return;
+    
     try {
+      // Fix: Change request body format to match API expectation
       const notificationData = {
-        message: `Emergency at ${address}: ${summary}`
+        text: `Emergency at ${address}: ${summary}`
       };
       
       const response = await fetch("https://marihacks8.onrender.com/api/send_notification", {
@@ -59,6 +65,7 @@ export function EmergencySystem() {
           duration: 5000,
         });
         setNotificationSent(true);
+        setShouldSendNotification(false); // Reset flag after sending
       } else {
         toast.error("Failed to send notification", {
           description: "Please try again or contact dispatch directly",
@@ -104,13 +111,21 @@ export function EmergencySystem() {
     if (info) {
       setEmergencyInfo(info);
       
-      // If we have an address and we haven't sent a notification yet, send one
+      // Rather than sending directly, set a flag to send notification
+      // if we have an address and haven't sent one yet
       if (info.address && !notificationSent) {
-        const summary = info.short_summary || info.summary || `${info.type} emergency`;
-        sendEmergencyNotification(info.address, summary);
+        setShouldSendNotification(true);
       }
     }
   };
+
+  // useEffect to handle notification sending separately from the analysis
+  useEffect(() => {
+    if (shouldSendNotification && emergencyInfo?.address && !notificationSent) {
+      const summary = emergencyInfo.short_summary || emergencyInfo.summary || `${emergencyInfo.type} emergency`;
+      sendEmergencyNotification(emergencyInfo.address, summary);
+    }
+  }, [shouldSendNotification, emergencyInfo, notificationSent]);
 
   // Fetch messages when call ID changes
   useEffect(() => {
@@ -186,8 +201,10 @@ export function EmergencySystem() {
                         variant="outline" 
                         size="sm"
                         onClick={() => {
-                          const summary = emergencyInfo.short_summary || emergencyInfo.summary || `${emergencyInfo.type} emergency`;
-                          sendEmergencyNotification(emergencyInfo.address, summary);
+                          // Only allow manual notification if we haven't sent one yet
+                          if (!notificationSent) {
+                            setShouldSendNotification(true);
+                          }
                         }}
                         className="h-8 px-2 text-xs flex items-center gap-1"
                         disabled={notificationSent}
