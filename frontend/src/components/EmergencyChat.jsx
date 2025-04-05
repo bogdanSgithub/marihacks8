@@ -18,6 +18,7 @@ export function EmergencyChat({ callId }) {
   const [error, setError] = useState(null);
   const [lastMessageId, setLastMessageId] = useState(null);
   const scrollAreaRef = useRef(null);
+  const prevMessageLengthRef = useRef(0);
 
   const fetchMessages = async () => {
     if (!callId) return;
@@ -40,14 +41,13 @@ export function EmergencyChat({ callId }) {
       
       // Handle the API response format
       if (data && data.messages && Array.isArray(data.messages)) {
-        // Check if we have new messages
-        if (messages.length !== data.messages.length) {
-          // Update last message ID for notification purposes
-          if (data.messages.length > 0) {
-            const latestMsg = data.messages[data.messages.length - 1];
-            setLastMessageId(latestMsg.id || Date.now().toString());
-          }
+        // Update last message ID for notification purposes
+        if (data.messages.length > 0) {
+          const latestMsg = data.messages[data.messages.length - 1];
+          setLastMessageId(latestMsg.id || Date.now().toString());
         }
+        
+        prevMessageLengthRef.current = messages.length;
         setMessages(data.messages);
         setError(null);
       } else if (data && typeof data === 'object') {
@@ -62,6 +62,7 @@ export function EmergencyChat({ callId }) {
         });
         
         if (extractedMessages.length > 0) {
+          prevMessageLengthRef.current = messages.length;
           setMessages(extractedMessages);
           setError(null);
         } else {
@@ -89,26 +90,16 @@ export function EmergencyChat({ callId }) {
     }
   }, [callId]);
 
-  // Auto-refresh messages every 5 seconds
+  // Auto-refresh messages every second
   useEffect(() => {
     if (!callId) return;
     
     const intervalId = setInterval(() => {
       fetchMessages();
-    }, 1000); // 5 seconds
+    }, 1000);
     
     return () => clearInterval(intervalId); // Cleanup on unmount or callId change
   }, [callId]);
-
-  // Scroll to bottom when new messages arrive
-  useEffect(() => {
-    if (scrollAreaRef.current) {
-      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (scrollContainer) {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight;
-      }
-    }
-  }, [messages]);
 
   const handleManualRefresh = () => {
     fetchMessages();
