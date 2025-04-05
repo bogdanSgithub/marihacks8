@@ -11,15 +11,17 @@ export function SectionCardsWithSelection({ onSelectCall }) {
     // First try fetching from the API endpoint
     fetch('https://marihacks8.onrender.com/api/call_ids')
       .then(response => {
-        if (!response.ok) {
-          // If API fails, try the local file as fallback
-          return fetch('/data.json');
-        }
+
         return response.json();
       })
       .then(data => {
-        // Directly use the data assuming it is an array of call objects with `callId`
-        setCalls(data);
+        // Check if data.call_ids is an array and use it
+        if (Array.isArray(data.call_ids)) {
+          setCalls(data.call_ids); // Use call_ids directly
+        } else {
+          console.error("Error: call_ids is not an array", data);
+          setCalls([]); // Set to empty array if call_ids is not an array
+        }
         setLoading(false);
       })
       .catch(error => {
@@ -39,18 +41,18 @@ export function SectionCardsWithSelection({ onSelectCall }) {
 
   return (
     <div className="space-y-1">
-      {calls.map((call) => (
+      {calls.map((callId) => (
         <Card
-          key={call.callId}
+          key={callId}
           className={`transition-all hover:shadow-sm cursor-pointer ${
-            selectedId === call.callId ? 'border-primary bg-primary/5' : ''
+            selectedId === callId ? 'border-primary bg-primary/5' : ''
           }`}
-          onClick={() => handleSelect(call.callId)}
+          onClick={() => handleSelect(callId)}
         >
           <div className="p-2">
             <div className="flex justify-between items-start mb-1">
               <span className="text-xs font-medium call-id">
-                {call.callId}
+                Calls {callId}
               </span>
             </div>
           </div>
