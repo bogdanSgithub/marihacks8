@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Phone, AlertCircle, CheckCircle2 } from "lucide-react";
 
 export function SectionCardsWithSelection({ onSelectCall }) {
   const [calls, setCalls] = useState([]);
@@ -11,7 +13,9 @@ export function SectionCardsWithSelection({ onSelectCall }) {
     // First try fetching from the API endpoint
     fetch('https://marihacks8.onrender.com/api/call_ids')
       .then(response => {
-
+        if (!response.ok) {
+          throw new Error(`Server responded with status: ${response.status}`);
+        }
         return response.json();
       })
       .then(data => {
@@ -35,7 +39,10 @@ export function SectionCardsWithSelection({ onSelectCall }) {
     onSelectCall(callId);
   };
 
-  if (loading) return <div className="p-4 text-center">Loading calls...</div>;
+  if (loading) {
+    return <div className="p-4 text-center">Loading calls...</div>;
+  }
+
   if (error) return <div className="p-4 text-center text-red-500">Error: {error}</div>;
   if (!calls || calls.length === 0) return <div className="p-4 text-center">No calls available</div>;
 
@@ -54,6 +61,10 @@ export function SectionCardsWithSelection({ onSelectCall }) {
               <span className="text-xs font-medium call-id">
                 Calls {callId}
               </span>
+              
+              {selectedId === callId && (
+                <CheckCircle2 size={16} className="text-blue-500" />
+              )}
             </div>
           </div>
         </Card>

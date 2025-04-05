@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, Phone, MapPin, Navigation, Map } from "lucide-react";
 
 import { SectionCardsWithSelection } from './SectionCardsWithSelection';
-import { EmergencyChatAndAnalysis } from './EmergencyChatAndAnalysis';
+import { EmergencyChat } from './EmergencyChat';
 import { EmergencyLocationMap } from './EmergencyLocationMap';
 
 import { Button } from "@/components/ui/button";
@@ -111,9 +111,8 @@ export function EmergencySystem() {
             
             {/* Chat and Analysis Section - Right */}
             <div className="w-1/2 p-4 h-full overflow-hidden">
-              <EmergencyChatAndAnalysis 
+              <EmergencyChat 
                 callId={selectedCallId} 
-                onAddressExtracted={handleAddressExtracted}
               />
             </div>
           </>

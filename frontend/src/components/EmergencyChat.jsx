@@ -1,60 +1,65 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, PhoneCall, AlertCircle } from "lucide-react";
-
+import { User, PhoneCall } from "lucide-react";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { EmergencyAnalysisBot } from "./EmergencyAnalysisBot";
 
 export function EmergencyChat({ callId }) {
-  const [callData, setCallData] = useState(null);
+  const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const scrollAreaRef = useRef(null);
 
-  const fetchCallData = async () => {
+  const fetchMessages = async () => {
     try {
-      const response = await fetch('/data.json');
+      setLoading(true);
+      const response = await fetch(`https://marihacks8.onrender.com/api/messages?call_id=${callId}`);
+      
       if (!response.ok) {
-        throw new Error('Network response was not ok');
+        throw new Error('Failed to fetch messages');
       }
+      
       const data = await response.json();
       
-      // Find the specific call by ID
-      const call = data.find(call => call.callId === callId);
-      if (call) {
-        setCallData(call);
+      // Handle the API response format
+      if (data && data.messages && Array.isArray(data.messages)) {
+        setMessages(data.messages);
+      } else if (data && typeof data === 'object') {
+        // Fallback in case the API response structure changes
+        const extractedMessages = [];
+        
+        // Try to extract messages if they're not in the expected format
+        Object.keys(data).forEach(key => {
+          if (key.includes('message') && Array.isArray(data[key])) {
+            extractedMessages.push(...data[key]);
+          }
+        });
+        
+        if (extractedMessages.length > 0) {
+          setMessages(extractedMessages);
+        } else {
+          setError('No messages found in the response');
+        }
       } else {
-        setError(`No call found with ID: ${callId}`);
+        setError('Invalid response format');
       }
-    } catch (error) {
-      setError(error.message);
+    } catch (err) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // Initial fetch
+  // Initial fetch when component mounts or callId changes
   useEffect(() => {
-    fetchCallData();
-  }, [callId]);
-
-  // Set up polling for updates (every 10 seconds)
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      fetchCallData();
-    }, 10000);
-
-    return () => clearInterval(intervalId);
+    if (callId) {
+      fetchMessages();
+    }
   }, [callId]);
 
   // Scroll to bottom when new messages arrive
@@ -65,137 +70,75 @@ export function EmergencyChat({ callId }) {
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
       }
     }
-  }, [callData]);
+  }, [messages]);
 
-  if (loading) {
+  if (loading && messages.length === 0) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
-        <Card className="h-full flex items-center justify-center md:col-span-2">
-          <div className="text-center">Loading conversation...</div>
-        </Card>
-        <div className="h-full">
-          <Card className="h-full flex items-center justify-center">
-            <div className="text-center">Loading analysis...</div>
-          </Card>
-        </div>
-      </div>
+      <Card className="h-full flex items-center justify-center">
+        <div className="text-center">Loading conversation...</div>
+      </Card>
     );
   }
 
-  if (error) {
+  if (error && messages.length === 0) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
-        <Card className="h-full flex items-center justify-center md:col-span-2">
-          <CardContent>
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>Error: {error}</AlertDescription>
-            </Alert>
-          </CardContent>
-        </Card>
-        <div className="h-full">
-          <Card className="h-full flex items-center justify-center">
-            <div className="text-center">No analysis available</div>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  if (!callData) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
-        <Card className="h-full flex items-center justify-center md:col-span-2">
-          <div className="text-center">No call data found</div>
-        </Card>
-        <div className="h-full">
-          <Card className="h-full flex items-center justify-center">
-            <div className="text-center">No analysis available</div>
-          </Card>
-        </div>
-      </div>
+      <Card className="h-full flex items-center justify-center">
+        <div className="text-center text-red-500">Error: {error}</div>
+      </Card>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
-      {/* Chat panel - takes up 2/3 of the space on larger screens */}
-      <Card className="h-full flex flex-col shadow-none md:col-span-2">
-        <CardHeader className="px-3 py-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-sm">{callData.callId}</CardTitle>
-              <CardDescription className="text-xs">
-                {callData.conversation?.length || 0} messages
-              </CardDescription>
+    <Card className="h-full flex flex-col shadow-none">
+      <CardHeader className="px-4 py-3">
+        <CardTitle className="text-lg">Emergency Conversation</CardTitle>
+      </CardHeader>
+      
+      <ScrollArea className="flex-1 px-4" ref={scrollAreaRef}>
+        <CardContent className="py-2">
+          {messages.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">
+              No messages available
             </div>
-            <Badge 
-              variant="outline" 
-              className={`${
-                callData.status === "completed" ? "bg-green-100 text-green-800" : 
-                callData.status === "in-progress" ? "bg-blue-100 text-blue-800" : 
-                callData.status === "canceled" ? "bg-red-100 text-red-800" : ""
-              } px-2 py-0.5 text-xs capitalize`}
-            >
-              {callData.status}
-            </Badge>
-          </div>
-        </CardHeader>
-        <ScrollArea className="flex-1 px-3" ref={scrollAreaRef}>
-          <CardContent className="py-1">
-            {callData.conversation?.map((message, index) => (
+          ) : (
+            messages.map((message, index) => (
               <div 
                 key={index}
-                className={`flex items-start gap-2 mb-2 ${
-                  message.speaker === "dispatcher" ? "justify-start" : "justify-end"
+                className={`flex items-start gap-3 mb-3 ${
+                  message.role === "assistant" ? "justify-start" : "justify-end"
                 }`}
               >
-                {message.speaker === "dispatcher" && (
-                  <Avatar className="h-6 w-6">
+                {message.role === "assistant" && (
+                  <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-primary text-primary-foreground">
-                      <PhoneCall className="h-3 w-3" />
+                      <PhoneCall className="h-4 w-4" />
                     </AvatarFallback>
                   </Avatar>
                 )}
+                
                 <div 
-                  className={`rounded-lg px-2 py-1.5 max-w-[85%] text-xs ${
-                    message.speaker === "dispatcher" 
+                  className={`rounded-lg px-3 py-2 max-w-[85%] text-sm ${
+                    message.role === "assistant" 
                       ? "bg-muted" 
                       : "bg-primary text-primary-foreground ml-auto"
                   }`}
                 >
-                  <div className="text-[10px] opacity-70 font-medium capitalize">
-                    {message.speaker}
-                  </div>
-                  <div>{message.message}</div>
+                  {message.transcript || message.content || ""}
                 </div>
-                {message.speaker === "caller" && (
-                  <Avatar className="h-6 w-6">
+                
+                {message.role === "user" && (
+                  <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-secondary text-secondary-foreground">
-                      <User className="h-3 w-3" />
+                      <User className="h-4 w-4" />
                     </AvatarFallback>
                   </Avatar>
                 )}
               </div>
-            ))}
-          </CardContent>
-        </ScrollArea>
-        <CardFooter className="p-2 border-t">
-          <div className="w-full text-center text-muted-foreground py-1 text-xs">
-            {callData.status === "completed" 
-              ? "This call has been completed." 
-              : callData.status === "in-progress"
-              ? "View-only mode: You cannot send messages in this interface."
-              : "This call has been canceled."}
-          </div>
-        </CardFooter>
-      </Card>
-
-      {/* Analysis panel - takes up 1/3 of the space on larger screens */}
-      <div className="h-full">
-        <EmergencyAnalysisBot callData={callData} />
-      </div>
-    </div>
+            ))
+          )}
+        </CardContent>
+      </ScrollArea>
+    </Card>
   );
 }
 
