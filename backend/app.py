@@ -6,12 +6,9 @@ from typing import List, Dict
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 import os
-from os.path import dirname, join
-from dotenv import load_dotenv
 from difflib import SequenceMatcher
-
-dotenv_path = join(dirname(__file__), ".env")
-load_dotenv(dotenv_path)
+from dotenv import load_dotenv
+load_dotenv()
 
 VONAGE_API_KEY = os.environ.get('VONAGE_API_KEY')
 VONAGE_API_SECRET = os.environ.get('VONAGE_API_SECRET')
