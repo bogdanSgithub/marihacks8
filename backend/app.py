@@ -50,9 +50,6 @@ app.add_middleware(
 memory_db: Dict[str, List[Message]] = {"messages": []}
 calls: Dict[str, Call] = {}
 
-# Static frontend folder
-build_folder = os.path.abspath("../frontend/build")
-
 # Routes
 @app.get("/api/messages", response_model=Messages)
 def get_messages(call_id: str = Query(...)):
@@ -157,8 +154,12 @@ def send_notification(request: NotificationRequest):
     return {"status": "sent", "response": response.dict()}
 
 # Serve React frontend
-'''
-app.mount("/static", StaticFiles(directory=os.path.join(build_folder, "static")), name="static")
+
+from pathlib import Path
+build_folder = Path(__file__).parent.parent / "frontend" / "dist"
+
+# Mount the static files
+app.mount("/frontend", StaticFiles(directory=build_folder), name="static")
 
 @app.get("/{filename:path}")
 async def serve_frontend(filename: str = "index.html"):
@@ -166,4 +167,3 @@ async def serve_frontend(filename: str = "index.html"):
     if not os.path.isfile(file_path):
         file_path = os.path.join(build_folder, "index.html")
     return FileResponse(file_path)
-'''
