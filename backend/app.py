@@ -109,7 +109,6 @@ def add_message(message: Message):
         else:
             # Diverging message (different content) → flush buffer
             memory_db["messages"].append(current_msg)
-            calls[message.call_id].messages.append(current_msg)  # Add to the correct call
             current_buffer = {
                 "call_id": message.call_id,
                 "role": message.role,
@@ -120,7 +119,6 @@ def add_message(message: Message):
     # SPEAKER CHANGED → flush buffer if exists
     if current_msg is not None:
         memory_db["messages"].append(current_msg)
-        calls[message.call_id].messages.append(current_msg)  # Add to the correct call
 
     # Start new buffer
     current_buffer = {
