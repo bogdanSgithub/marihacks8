@@ -1,0 +1,172 @@
+[
+    {
+      "callId": "EM10042025",
+      "status": "completed",
+      "conversation": [
+        {
+          "speaker": "dispatcher",
+          "message": "911, what's your emergency?"
+        },
+        {
+          "speaker": "caller",
+          "message": "There's a fire in my kitchen! The stove caught fire!"
+        },
+        {
+          "speaker": "dispatcher",
+          "message": "Is everyone safely out of the house?"
+        },
+        {
+          "speaker": "caller",
+          "message": "Yes, we're all outside now."
+        },
+        {
+          "speaker": "dispatcher",
+          "message": "What's your address?"
+        },
+        {
+          "speaker": "caller",
+          "message": "i am at john abbott college montreal"
+        },
+        {
+          "speaker": "dispatcher",
+          "message": "Fire services are on their way. Stay outside and away from the building."
+        }
+      ]
+    },
+    {
+      "callId": "EM10042026",
+      "status": "in-progress",
+      "conversation": [
+        {
+          "speaker": "dispatcher",
+          "message": "911, what's your emergency?"
+        },
+        {
+          "speaker": "caller",
+          "message": "I think my neighbor is having a heart attack. He's clutching his chest and can't breathe well."
+        },
+        {
+          "speaker": "dispatcher",
+          "message": "Is he conscious and responsive?"
+        },
+        {
+          "speaker": "caller",
+          "message": "Yes, but he looks really bad."
+        },
+        {
+          "speaker": "dispatcher",
+          "message": "What's your location?"
+        },
+        {
+          "speaker": "caller",
+          "message": "Apartment 4B, 567 Pine Avenue, Chicago, IL 60601."
+        },
+        {
+          "speaker": "dispatcher",
+          "message": "Medical assistance is on the way. If available, give him one aspirin to chew."
+        }
+      ]
+    },
+    {
+      "callId": "EM10042027",
+      "status": "completed",
+      "conversation": [
+        {
+          "speaker": "dispatcher",
+          "message": "911, what's your emergency?"
+        },
+        {
+          "speaker": "caller",
+          "message": "There's been a car accident at the intersection of Main and 5th."
+        },
+        {
+          "speaker": "dispatcher",
+          "message": "Are there any injuries?"
+        },
+        {
+          "speaker": "caller",
+          "message": "One person seems hurt, but everyone is conscious."
+        },
+        {
+          "speaker": "dispatcher",
+          "message": "What city are you in?"
+        },
+        {
+          "speaker": "caller",
+          "message": "I'm at 1500 Main Street, Boston, MA 02108, right at the intersection."
+        },
+        {
+          "speaker": "dispatcher",
+          "message": "Emergency services are being dispatched. Please stay at the scene."
+        }
+      ]
+    },
+    {
+      "callId": "EM10042028",
+      "status": "canceled",
+      "conversation": [
+        {
+          "speaker": "dispatcher",
+          "message": "911, what's your emergency?"
+        },
+        {
+          "speaker": "caller",
+          "message": "I heard loud noises next door, like someone breaking in."
+        },
+        {
+          "speaker": "dispatcher",
+          "message": "What's your address?"
+        },
+        {
+          "speaker": "caller",
+          "message": "890 Elm Street, Seattle, WA 98101."
+        },
+        {
+          "speaker": "dispatcher",
+          "message": "Officers are on the way. Stay in a safe location."
+        },
+        {
+          "speaker": "caller",
+          "message": "Wait, I see my neighbor now. He just dropped his groceries. False alarm, I'm sorry."
+        },
+        {
+          "speaker": "dispatcher",
+          "message": "I'll cancel the dispatch. Thank you for letting us know."
+        }
+      ]
+    },
+    {
+      "callId": "EM10042029",
+      "status": "completed",
+      "conversation": [
+        {
+          "speaker": "dispatcher",
+          "message": "911, what's your emergency?"
+        },
+        {
+          "speaker": "caller",
+          "message": "My child is having an allergic reaction. Her face is swelling up!"
+        },
+        {
+          "speaker": "dispatcher",
+          "message": "Does she have an EpiPen?"
+        },
+        {
+          "speaker": "caller",
+          "message": "Yes, I just used it."
+        },
+        {
+          "speaker": "dispatcher",
+          "message": "Good. What's your location?"
+        },
+        {
+          "speaker": "caller",
+          "message": "1234 Maple Drive, Austin, TX 78701."
+        },
+        {
+          "speaker": "dispatcher",
+          "message": "Paramedics are on the way. Monitor her breathing and call back if symptoms worsen."
+        }
+      ]
+    }
+  ]
