@@ -1,23 +1,35 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, PhoneCall } from "lucide-react";
+import { User, PhoneCall, RefreshCw, AlertCircle } from "lucide-react";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
+  CardFooter
 } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function EmergencyChat({ callId }) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [lastMessageId, setLastMessageId] = useState(null);
   const scrollAreaRef = useRef(null);
 
   const fetchMessages = async () => {
+    if (!callId) return;
+    
     try {
-      setLoading(true);
+      // Only show loading on initial fetch, otherwise use refreshing state
+      if (messages.length === 0) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
+      
       const response = await fetch(`https://marihacks8.onrender.com/api/messages?call_id=${callId}`);
       
       if (!response.ok) {
@@ -28,7 +40,16 @@ export function EmergencyChat({ callId }) {
       
       // Handle the API response format
       if (data && data.messages && Array.isArray(data.messages)) {
+        // Check if we have new messages
+        if (messages.length !== data.messages.length) {
+          // Update last message ID for notification purposes
+          if (data.messages.length > 0) {
+            const latestMsg = data.messages[data.messages.length - 1];
+            setLastMessageId(latestMsg.id || Date.now().toString());
+          }
+        }
         setMessages(data.messages);
+        setError(null);
       } else if (data && typeof data === 'object') {
         // Fallback in case the API response structure changes
         const extractedMessages = [];
@@ -42,6 +63,7 @@ export function EmergencyChat({ callId }) {
         
         if (extractedMessages.length > 0) {
           setMessages(extractedMessages);
+          setError(null);
         } else {
           setError('No messages found in the response');
         }
@@ -52,6 +74,7 @@ export function EmergencyChat({ callId }) {
       setError(err.message);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -59,7 +82,22 @@ export function EmergencyChat({ callId }) {
   useEffect(() => {
     if (callId) {
       fetchMessages();
+    } else {
+      setMessages([]);
+      setError(null);
+      setLoading(false);
     }
+  }, [callId]);
+
+  // Auto-refresh messages every 5 seconds
+  useEffect(() => {
+    if (!callId) return;
+    
+    const intervalId = setInterval(() => {
+      fetchMessages();
+    }, 1000); // 5 seconds
+    
+    return () => clearInterval(intervalId); // Cleanup on unmount or callId change
   }, [callId]);
 
   // Scroll to bottom when new messages arrive
@@ -72,26 +110,70 @@ export function EmergencyChat({ callId }) {
     }
   }, [messages]);
 
+  const handleManualRefresh = () => {
+    fetchMessages();
+  };
+
   if (loading && messages.length === 0) {
     return (
-      <Card className="h-full flex items-center justify-center">
-        <div className="text-center">Loading conversation...</div>
+      <Card className="h-full flex flex-col">
+        <CardHeader className="px-4 py-3">
+          <CardTitle className="text-lg">Emergency Conversation</CardTitle>
+        </CardHeader>
+        <CardContent className="flex-1">
+          <div className="space-y-4">
+            <div className="flex items-start gap-3">
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <Skeleton className="h-14 w-2/3 rounded-lg" />
+            </div>
+            <div className="flex items-start gap-3 justify-end">
+              <Skeleton className="h-10 w-1/2 rounded-lg" />
+              <Skeleton className="h-8 w-8 rounded-full" />
+            </div>
+            <div className="flex items-start gap-3">
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <Skeleton className="h-20 w-3/4 rounded-lg" />
+            </div>
+          </div>
+        </CardContent>
       </Card>
     );
   }
 
   if (error && messages.length === 0) {
     return (
-      <Card className="h-full flex items-center justify-center">
-        <div className="text-center text-red-500">Error: {error}</div>
+      <Card className="h-full flex flex-col">
+        <CardHeader className="px-4 py-3">
+          <CardTitle className="text-lg">Emergency Conversation</CardTitle>
+        </CardHeader>
+        <CardContent className="flex-1 flex items-center justify-center">
+          <div className="text-center text-red-500 flex flex-col items-center gap-2">
+            <AlertCircle className="h-8 w-8" />
+            <p>Error: {error}</p>
+            <button 
+              onClick={handleManualRefresh}
+              className="mt-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm"
+            >
+              Try Again
+            </button>
+          </div>
+        </CardContent>
       </Card>
     );
   }
 
   return (
     <Card className="h-full flex flex-col shadow-none">
-      <CardHeader className="px-4 py-3">
+      <CardHeader className="px-4 py-3 flex flex-row items-center justify-between">
         <CardTitle className="text-lg">Emergency Conversation</CardTitle>
+        <button 
+          onClick={handleManualRefresh} 
+          className="p-1 rounded-full hover:bg-muted"
+          disabled={refreshing}
+          title="Refresh messages"
+        >
+          <RefreshCw size={16} className={`${refreshing ? 'animate-spin text-blue-500' : 'text-gray-500'}`} />
+        </button>
       </CardHeader>
       
       <ScrollArea className="flex-1 px-4" ref={scrollAreaRef}>
@@ -138,6 +220,15 @@ export function EmergencyChat({ callId }) {
           )}
         </CardContent>
       </ScrollArea>
+      
+      {refreshing && (
+        <CardFooter className="px-4 py-2 border-t text-xs text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <RefreshCw size={12} className="animate-spin" />
+            <span>Updating conversation...</span>
+          </div>
+        </CardFooter>
+      )}
     </Card>
   );
 }
