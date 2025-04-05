@@ -1,8 +1,8 @@
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List
+from typing import List, Dict
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 import os
@@ -17,13 +17,17 @@ VONAGE_API_SECRET = os.getenv('VONAGE_API_SECRET')
 SMS_TO_NUMBER = os.getenv("SMS_TO_NUMBER")
 SMS_SENDER_ID = os.getenv("SMS_SENDER_ID")
 
-# Message schema
 class Message(BaseModel):
+    role: str
+    transcript: str
+    call_id: str
+
+class MessagePublic(BaseModel):
     role: str
     transcript: str
 
 class Messages(BaseModel):
-    messages: List[Message]
+    messages: List[MessagePublic]
 
 class NotificationRequest(BaseModel):
     text: str
@@ -40,20 +44,40 @@ app.add_middleware(
 )
 
 # In-memory DB
-memory_db = {"messages": []}
+memory_db: Dict[str, List[Message]] = {"messages": []}
+call_ids = set()
 
 # Static frontend folder
 build_folder = os.path.abspath("../frontend/build")
 
 # Routes
 @app.get("/api/messages", response_model=Messages)
-def get_messages():
-    return Messages(messages=memory_db["messages"])
+def get_messages(call_id: str = Query(...)):
+    filtered = [
+        MessagePublic(role=msg.role, transcript=msg.transcript)
+        for msg in memory_db["messages"]
+        if msg.call_id == call_id
+    ]
+    return Messages(messages=filtered)
 
 @app.post("/api/messages")
 def add_message(message: Message):
+    # Check for duplicates
+    for msg in memory_db["messages"]:
+        if (
+            msg.role == message.role and
+            msg.transcript == message.transcript and
+            msg.call_id == message.call_id
+        ):
+            return {"message": "Duplicate message not added."}
+
     memory_db["messages"].append(message)
+    call_ids.add(message.call_id)
     return message
+
+@app.get("/api/call_ids")
+def get_call_ids():
+    return {"call_ids": list(call_ids)}
 
 @app.post("/api/send_notification")
 def send_notification(request: NotificationRequest):
