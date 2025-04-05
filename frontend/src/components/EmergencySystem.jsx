@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Phone, MapPin, Navigation, Map } from "lucide-react";
 
 import { SectionCardsWithSelection } from './SectionCardsWithSelection';
 import { EmergencyChat } from './EmergencyChat';
 import { EmergencyLocationMap } from './EmergencyLocationMap';
+import { extractAddressFromMessages } from './GeminiAddressExtractor';
 
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -13,28 +14,80 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export function EmergencySystem() {
   const [selectedCallId, setSelectedCallId] = useState(null);
   const [extractedAddress, setExtractedAddress] = useState(null);
   const [mapType, setMapType] = useState("roadmap");
+  const [messages, setMessages] = useState([]);
+  // No need for address status anymore
   
   // Function to handle call selection
   const handleCallSelect = (callId) => {
     setSelectedCallId(callId);
     setExtractedAddress(null); // Reset address when a new call is selected
-  };
-  
-  // Function to handle address extraction
-  const handleAddressExtracted = (address) => {
-    setExtractedAddress(address);
+    // Reset address only
   };
   
   // Function to toggle map type
   const toggleMapType = () => {
     setMapType(mapType === "roadmap" ? "satellite" : "roadmap");
   };
+
+  // Function to fetch messages for the current call
+  const fetchMessages = async () => {
+    if (!selectedCallId) return;
+    
+    try {
+      const response = await fetch(`https://marihacks8.onrender.com/api/messages?call_id=${selectedCallId}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch messages');
+      }
+      
+      const data = await response.json();
+      
+      if (data && data.messages && Array.isArray(data.messages)) {
+        setMessages(data.messages);
+        // If we have new messages, try to extract the address
+        checkForAddress(data.messages);
+      }
+    } catch (err) {
+      console.error("Error fetching messages:", err);
+    }
+  };
+
+  // Function to check for address in messages
+  const checkForAddress = async (msgs) => {
+    if (!msgs || msgs.length === 0) return;
+    
+    const address = await extractAddressFromMessages(msgs);
+    
+    if (address) {
+      setExtractedAddress(address);
+    }
+  };
+
+  // Fetch messages when call ID changes
+  useEffect(() => {
+    if (selectedCallId) {
+      fetchMessages();
+    }
+  }, [selectedCallId]);
+
+  // Poll for new messages every 5 seconds
+  useEffect(() => {
+    if (!selectedCallId) return;
+    
+    const intervalId = setInterval(() => {
+      fetchMessages();
+    }, 5000);
+    
+    return () => clearInterval(intervalId);
+  }, [selectedCallId]);
   
   return (
     <div className="flex h-screen overflow-hidden">
@@ -106,10 +159,16 @@ export function EmergencySystem() {
                     mapType={mapType} 
                   />
                 </CardContent>
+                {extractedAddress && (
+                  <CardFooter className="py-2 px-4 border-t bg-green-50 text-green-800 text-sm">
+                    <MapPin className="h-4 w-4 mr-2" />
+                    Location: {extractedAddress}
+                  </CardFooter>
+                )}
               </Card>
             </div>
             
-            {/* Chat and Analysis Section - Right */}
+            {/* Chat Section - Right */}
             <div className="w-1/2 p-4 h-full overflow-hidden">
               <EmergencyChat 
                 callId={selectedCallId} 
