@@ -4,7 +4,8 @@ import { ArrowLeft, Phone, MapPin, Navigation, Map } from "lucide-react";
 import { SectionCardsWithSelection } from './SectionCardsWithSelection';
 import { EmergencyChat } from './EmergencyChat';
 import { EmergencyLocationMap } from './EmergencyLocationMap';
-import { extractAddressFromMessages } from './GeminiAddressExtractor';
+import { EmergencySummaryCard } from './EmergencySummaryCard';
+import { extractEmergencyInfo } from './EnhancedGeminiExtractor';
 
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -16,20 +17,17 @@ import {
   CardTitle,
   CardFooter
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 
 export function EmergencySystem() {
   const [selectedCallId, setSelectedCallId] = useState(null);
-  const [extractedAddress, setExtractedAddress] = useState(null);
+  const [emergencyInfo, setEmergencyInfo] = useState(null);
   const [mapType, setMapType] = useState("roadmap");
   const [messages, setMessages] = useState([]);
-  // No need for address status anymore
   
   // Function to handle call selection
   const handleCallSelect = (callId) => {
     setSelectedCallId(callId);
-    setExtractedAddress(null); // Reset address when a new call is selected
-    // Reset address only
+    setEmergencyInfo(null); // Reset emergency info when a new call is selected
   };
   
   // Function to toggle map type
@@ -52,22 +50,22 @@ export function EmergencySystem() {
       
       if (data && data.messages && Array.isArray(data.messages)) {
         setMessages(data.messages);
-        // If we have new messages, try to extract the address
-        checkForAddress(data.messages);
+        // If we have new messages, extract emergency information
+        analyzeEmergency(data.messages);
       }
     } catch (err) {
       console.error("Error fetching messages:", err);
     }
   };
 
-  // Function to check for address in messages
-  const checkForAddress = async (msgs) => {
+  // Function to analyze emergency information
+  const analyzeEmergency = async (msgs) => {
     if (!msgs || msgs.length === 0) return;
     
-    const address = await extractAddressFromMessages(msgs);
+    const info = await extractEmergencyInfo(msgs);
     
-    if (address) {
-      setExtractedAddress(address);
+    if (info) {
+      setEmergencyInfo(info);
     }
   };
 
@@ -124,8 +122,9 @@ export function EmergencySystem() {
         ) : (
           <>
             {/* Map Section - Left */}
-            <div className="w-1/2 p-4 h-full">
-              <Card className="h-full flex flex-col">
+            <div className="w-1/2 p-4 h-full flex flex-col">
+              {/* Map Card - Top */}
+              <Card className="flex-1 flex flex-col mb-4">
                 <CardHeader className="py-3 px-4 flex-row justify-between items-center space-y-0">
                   <div>
                     <CardTitle className="text-base flex items-center gap-2">
@@ -155,17 +154,16 @@ export function EmergencySystem() {
                 </CardHeader>
                 <CardContent className="flex-1 p-3">
                   <EmergencyLocationMap 
-                    address={extractedAddress} 
+                    address={emergencyInfo?.address} 
                     mapType={mapType} 
                   />
                 </CardContent>
-                {extractedAddress && (
-                  <CardFooter className="py-2 px-4 border-t bg-green-50 text-green-800 text-sm">
-                    <MapPin className="h-4 w-4 mr-2" />
-                    Location: {extractedAddress}
-                  </CardFooter>
-                )}
               </Card>
+              
+              {/* Emergency Summary Card - Bottom */}
+              <div>
+                <EmergencySummaryCard emergencyInfo={emergencyInfo} />
+              </div>
             </div>
             
             {/* Chat Section - Right */}
