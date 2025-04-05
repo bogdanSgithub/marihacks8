@@ -142,6 +142,14 @@ def get_call_ids():
         "calls": [{"call_id": call.call_id, "phone_number": call.phone_number} for call in calls.values()]
     }
 
+@app.delete("/api/clear_calls_messages")
+def clear_calls():
+    global memory_db
+    global calls
+
+    memory_db: Dict[str, List[Message]] = {"messages": []}
+    calls: Dict[str, Call] = {}
+
 @app.post("/api/send_notification")
 def send_notification(request: NotificationRequest):
     from vonage import Auth, Vonage
