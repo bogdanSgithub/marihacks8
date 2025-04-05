@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 import os
 from os.path import dirname, join
 from dotenv import load_dotenv
+from difflib import SequenceMatcher
 
 dotenv_path = join(dirname(__file__), ".env")
 load_dotenv(dotenv_path)
@@ -58,6 +59,17 @@ def get_messages(call_id: str = Query(...)):
         for msg in memory_db["messages"]
         if msg.call_id == call_id
     ]
+
+    # Also include the currently buffered message if it matches
+    if (
+        current_buffer["message"] and
+        current_buffer["call_id"] == call_id
+    ):
+        buffered_msg = current_buffer["message"]
+        filtered.append(
+            MessagePublic(role=buffered_msg.role, transcript=buffered_msg.transcript)
+        )
+
     return Messages(messages=filtered)
 
 current_buffer = {
@@ -70,43 +82,53 @@ current_buffer = {
 def add_message(message: Message):
     global current_buffer
 
-    # If it's the same speaker continuing their sentence
+    current_msg = current_buffer["message"]
+
+    # SAME SPEAKER + SAME CALL
     if (
         current_buffer["call_id"] == message.call_id and
-        current_buffer["role"] == message.role
+        current_buffer["role"] == message.role and
+        current_msg is not None
     ):
-        prev_message = current_buffer["message"]
-        if message.transcript.startswith(prev_message.transcript):
-            # Just a continuation, update buffer
+        existing = current_msg.transcript.strip()
+        incoming = message.transcript.strip()
+        # Compute similarity
+        similarity = SequenceMatcher(None, existing, incoming).ratio()
+
+        if (similarity > 0.6 and len(incoming) >= len(existing)) or incoming.startswith(existing) and len(incoming) > len(existing):
+            # Update buffer with longer version
             current_buffer["message"] = message
-            return {"message": "Transcript updated for current speaker."}
-        elif prev_message.transcript.startswith(message.transcript):
-            # It's a partial/shorter repeat, ignore
-            return {"message": "Shorter duplicate ignored."}
+            return {"message": "Transcript updated with longer version."}
+
+        elif (similarity > 0.6 and len(incoming) < len(existing)) or existing.startswith(incoming):
+            # Shorter or partial repeat → ignore
+            return {"message": "Ignored shorter/duplicate message."}
+
         else:
-            # Unexpected divergence — treat as new message
-            memory_db["messages"].append(prev_message)
-            call_ids.add(prev_message.call_id)
+            # Diverging message (different content) → flush buffer
+            memory_db["messages"].append(current_msg)
+            call_ids.add(current_msg.call_id)
             current_buffer = {
                 "call_id": message.call_id,
                 "role": message.role,
                 "message": message
             }
-            return {"message": "New segment started (same speaker, diverging transcript)."}
+            return {"message": "Flushed previous. New diverging message buffered."}
 
-    # Speaker changed → commit the last speaker’s message
-    if current_buffer["message"]:
-        memory_db["messages"].append(current_buffer["message"])
-        call_ids.add(current_buffer["message"].call_id)
+    # SPEAKER CHANGED → flush buffer if exists
+    if current_msg is not None:
+        memory_db["messages"].append(current_msg)
+        call_ids.add(current_msg.call_id)
 
-    # Start buffering the new speaker's message
+    # Start new buffer
     current_buffer = {
         "call_id": message.call_id,
         "role": message.role,
         "message": message
     }
 
-    return {"message": "New speaker, message buffered."}
+    return {"message": "New speaker. Message buffered."}
+
 
 @app.get("/api/call_ids")
 def get_call_ids():
