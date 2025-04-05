@@ -6,6 +6,16 @@ from typing import List
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 import os
+from os.path import dirname, join
+from dotenv import load_dotenv
+
+dotenv_path = join(dirname(__file__), ".env")
+load_dotenv(dotenv_path)
+
+VONAGE_API_KEY = os.getenv('VONAGE_API_KEY')
+VONAGE_API_SECRET = os.getenv('VONAGE_API_SECRET')
+SMS_TO_NUMBER = os.getenv("SMS_TO_NUMBER")
+SMS_SENDER_ID = os.getenv("SMS_SENDER_ID")
 
 # Message schema
 class Message(BaseModel):
@@ -14,6 +24,9 @@ class Message(BaseModel):
 
 class Messages(BaseModel):
     messages: List[Message]
+
+class NotificationRequest(BaseModel):
+    text: str
 
 app = FastAPI()
 
@@ -41,6 +54,22 @@ def get_messages():
 def add_message(message: Message):
     memory_db["messages"].append(message)
     return message
+
+@app.post("/api/send_notification")
+def send_notification(request: NotificationRequest):
+    from vonage import Auth, Vonage
+    from vonage_sms import SmsMessage, SmsResponse
+
+    # Initialize Vonage client
+    vonage_client = Vonage(Auth(api_key=VONAGE_API_KEY, api_secret=VONAGE_API_SECRET))
+
+    message = SmsMessage(
+        to=SMS_TO_NUMBER,
+        from_=SMS_SENDER_ID,
+        text=request.text,
+    )
+    response: SmsResponse = vonage_client.sms.send(message)
+    return {"status": "sent", "response": response.dict()}
 
 # Serve React frontend
 '''
