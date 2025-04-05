@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Phone, MapPin, Navigation, Map } from "lucide-react";
+import { ArrowLeft, Phone, MapPin, Navigation, Map, Bell } from "lucide-react";
+import { toast, Toaster } from "sonner";
 
 import { SectionCardsWithSelection } from './SectionCardsWithSelection';
 import { EmergencyChat } from './EmergencyChat';
@@ -23,16 +24,52 @@ export function EmergencySystem() {
   const [emergencyInfo, setEmergencyInfo] = useState(null);
   const [mapType, setMapType] = useState("roadmap");
   const [messages, setMessages] = useState([]);
+  const [notificationSent, setNotificationSent] = useState(false);
   
   // Function to handle call selection
   const handleCallSelect = (callId) => {
     setSelectedCallId(callId);
     setEmergencyInfo(null); // Reset emergency info when a new call is selected
+    setNotificationSent(false); // Reset notification status when a new call is selected
   };
   
   // Function to toggle map type
   const toggleMapType = () => {
     setMapType(mapType === "roadmap" ? "satellite" : "roadmap");
+  };
+
+  // Function to send notification to emergency services
+  const sendEmergencyNotification = async (address, summary) => {
+    try {
+      const notificationData = {
+        message: `Emergency at ${address}: ${summary}`
+      };
+      
+      const response = await fetch("https://marihacks8.onrender.com/api/send_notification", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(notificationData)
+      });
+      
+      if (response.ok) {
+        toast.success("Emergency notification sent successfully", {
+          description: `Responders alerted about incident at ${address}`,
+          duration: 5000,
+        });
+        setNotificationSent(true);
+      } else {
+        toast.error("Failed to send notification", {
+          description: "Please try again or contact dispatch directly",
+        });
+      }
+    } catch (error) {
+      console.error("Error sending notification:", error);
+      toast.error("Failed to send notification", {
+        description: "Network error. Please try again.",
+      });
+    }
   };
 
   // Function to fetch messages for the current call
@@ -66,6 +103,12 @@ export function EmergencySystem() {
     
     if (info) {
       setEmergencyInfo(info);
+      
+      // If we have an address and we haven't sent a notification yet, send one
+      if (info.address && !notificationSent) {
+        const summary = info.short_summary || info.summary || `${info.type} emergency`;
+        sendEmergencyNotification(info.address, summary);
+      }
     }
   };
 
@@ -89,9 +132,13 @@ export function EmergencySystem() {
   
   return (
     <div className="flex h-screen overflow-hidden">
+      {/* Sonner Toaster Component */}
+      <Toaster position="top-right" richColors />
+      
       {/* Sticky Sidebar - Call Dashboard */}
       <div className="w-1/4 border-r bg-muted/30 overflow-hidden flex flex-col h-screen sticky top-0 left-0">
         <div className="p-4 border-b bg-background">
+          
           <h2 className="text-xl font-semibold flex items-center gap-2">
             <Phone className="h-5 w-5" />
             Emergency Calls
@@ -133,24 +180,41 @@ export function EmergencySystem() {
                     </CardTitle>
                     <CardDescription className="text-xs">Call ID: {selectedCallId}</CardDescription>
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={toggleMapType}
-                    className="h-8 px-2 text-xs flex items-center gap-1"
-                  >
-                    {mapType === "roadmap" ? (
-                      <>
-                        <Navigation className="h-3 w-3" />
-                        <span>Switch to Satellite</span>
-                      </>
-                    ) : (
-                      <>
-                        <Map className="h-3 w-3" />
-                        <span>Switch to Street</span>
-                      </>
+                  <div className="flex items-center gap-2">
+                    {emergencyInfo?.address && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          const summary = emergencyInfo.short_summary || emergencyInfo.summary || `${emergencyInfo.type} emergency`;
+                          sendEmergencyNotification(emergencyInfo.address, summary);
+                        }}
+                        className="h-8 px-2 text-xs flex items-center gap-1"
+                        disabled={notificationSent}
+                      >
+                        <Bell className="h-3 w-3" />
+                        <span>{notificationSent ? "Notification Sent" : "Send Alert"}</span>
+                      </Button>
                     )}
-                  </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={toggleMapType}
+                      className="h-8 px-2 text-xs flex items-center gap-1"
+                    >
+                      {mapType === "roadmap" ? (
+                        <>
+                          <Navigation className="h-3 w-3" />
+                          <span>Switch to Satellite</span>
+                        </>
+                      ) : (
+                        <>
+                          <Map className="h-3 w-3" />
+                          <span>Switch to Street</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="flex-1 p-3">
                   <EmergencyLocationMap 
