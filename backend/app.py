@@ -60,20 +60,53 @@ def get_messages(call_id: str = Query(...)):
     ]
     return Messages(messages=filtered)
 
+current_buffer = {
+    "call_id": None,
+    "role": None,
+    "message": None
+}
+
 @app.post("/api/messages")
 def add_message(message: Message):
-    # Check for duplicates
-    for msg in memory_db["messages"]:
-        if (
-            msg.role == message.role and
-            msg.transcript == message.transcript and
-            msg.call_id == message.call_id
-        ):
-            return {"message": "Duplicate message not added."}
+    global current_buffer
 
-    memory_db["messages"].append(message)
-    call_ids.add(message.call_id)
-    return message
+    # If it's the same speaker continuing their sentence
+    if (
+        current_buffer["call_id"] == message.call_id and
+        current_buffer["role"] == message.role
+    ):
+        prev_message = current_buffer["message"]
+        if message.transcript.startswith(prev_message.transcript):
+            # Just a continuation, update buffer
+            current_buffer["message"] = message
+            return {"message": "Transcript updated for current speaker."}
+        elif prev_message.transcript.startswith(message.transcript):
+            # It's a partial/shorter repeat, ignore
+            return {"message": "Shorter duplicate ignored."}
+        else:
+            # Unexpected divergence — treat as new message
+            memory_db["messages"].append(prev_message)
+            call_ids.add(prev_message.call_id)
+            current_buffer = {
+                "call_id": message.call_id,
+                "role": message.role,
+                "message": message
+            }
+            return {"message": "New segment started (same speaker, diverging transcript)."}
+
+    # Speaker changed → commit the last speaker’s message
+    if current_buffer["message"]:
+        memory_db["messages"].append(current_buffer["message"])
+        call_ids.add(current_buffer["message"].call_id)
+
+    # Start buffering the new speaker's message
+    current_buffer = {
+        "call_id": message.call_id,
+        "role": message.role,
+        "message": message
+    }
+
+    return {"message": "New speaker, message buffered."}
 
 @app.get("/api/call_ids")
 def get_call_ids():
